@@ -1,0 +1,227 @@
+*&---------------------------------------------------------------------*
+*& Report  ZPHANI_31_2_014
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT  zphani_31_2_014 NO STANDARD PAGE HEADING LINE-SIZE 1000.
+
+
+TABLES:vbap,vbak.
+
+
+SELECTION-SCREEN:BEGIN OF BLOCK b1 WITH FRAME TITLE text-000.
+
+SELECT-OPTIONS:s_vbeln FOR vbak-vbeln,
+               s_erdat FOR vbap-erdat ,
+
+               s_kunnr FOR vbak-kunnr .
+
+SELECTION-SCREEN:END OF BLOCK b1.
+
+TYPES:BEGIN OF ty_vbak,
+      vbeln TYPE vbap-vbeln,
+       erdat TYPE erdat,
+      END OF ty_vbak.
+
+TYPES: BEGIN OF ty_vbap,
+         vbeln TYPE vbap-vbeln,
+         posnr TYPE vbap-posnr,
+         erdat TYPE vbap-erdat,
+         matnr TYPE vbap-matnr,
+         arktx TYPE vbap-arktx,
+         fmeng TYPE vbap-fmeng,
+         meins TYPE vbap-meins,
+         netwr TYPE vbap-netwr,
+         waerk TYPE vbap-waerk,
+      END OF ty_vbap.
+
+
+DATA:wa_vbak TYPE ty_vbak,
+      it_vbak TYPE TABLE OF ty_vbak.
+
+
+DATA:wa_vbap TYPE ty_vbap,
+     it_vbap TYPE TABLE OF ty_vbap.
+
+DATA:v_vbeln TYPE vbak-vbeln.
+
+DATA:v_erdat TYPE vbap-erdat.
+DATA:lv_date TYPE int4.
+
+
+DATA:v_kunnr TYPE kunnr.
+DATA:v_field TYPE string,
+     v_value(20) TYPE c.
+
+DATA: v_date TYPE i.
+
+AT SELECTION-SCREEN ON s_erdat.
+
+  PERFORM validation.
+
+AT SELECTION-SCREEN ON s_kunnr.
+*
+  PERFORM validcustomer.
+
+START-OF-SELECTION.
+
+  PERFORM get_data.
+
+  PERFORM display_data.
+
+*&---------------------------------------------------------------------*
+*&      Form  VALIDATION
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM validation .
+
+
+
+*  SELECT SINGLE erdat FROM vbap INTO v_erdat WHERE erdat IN s_erdat.
+
+  IF s_erdat[] IS INITIAL.
+
+    MESSAGE 'PLEASE ENTER  DATE' TYPE 'E'.
+  ELSE.
+    LOOP AT s_erdat.
+      IF s_erdat-low IS INITIAL OR  s_erdat-high IS INITIAL .
+        MESSAGE 'PLEASE FILL FROM AND TO DATE' TYPE 'E'.
+      ELSE.
+        lv_date = s_erdat-high - s_erdat-low.
+        IF lv_date > 30.
+          MESSAGE 'DATE SHOULD BE LESS THAN 30 DAYS' TYPE 'E'.
+        ENDIF.
+      ENDIF.
+
+    ENDLOOP.
+
+  ENDIF.
+
+ENDFORM.                    " VALIDATION
+*&---------------------------------------------------------------------*
+*&      Form  GET_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_data .
+
+
+  SELECT vbeln erdat FROM vbak INTO TABLE it_vbak WHERE vbeln IN s_vbeln.
+
+  SELECT   vbeln
+           posnr
+           erdat
+           matnr
+           arktx
+           fmeng
+           meins
+           netwr
+           waerk   FROM vbap INTO TABLE it_vbap  FOR ALL ENTRIES IN it_vbak WHERE vbeln = it_vbak-vbeln
+                                                   AND erdat IN s_erdat.
+
+
+
+ENDFORM.                    " GET_DATA
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_data .
+
+
+
+
+  WRITE:10 'SALES ORDER NUMBER' ,
+          40   'ITEM NUMBER',
+           70    'DATE ON CREATED',
+          100  'MATERIAL NUMBER',
+          130  'MATERIAL TEXT',
+         150'QUANTITY',
+          170 'UNIT OF MEASUREMENT',
+        210  'PRICE',
+         230'CURRENCY'.
+
+  LOOP AT it_vbap INTO wa_vbap.
+
+
+    WRITE:/10 wa_vbap-vbeln ,
+            40   wa_vbap-posnr,
+             70    wa_vbap-erdat,
+            100  wa_vbap-matnr,
+            130  wa_vbap-arktx,
+           150 wa_vbap-fmeng,
+            170 wa_vbap-meins,
+           200 wa_vbap-netwr,
+           230 wa_vbap-waerk.
+
+
+
+  ENDLOOP.
+
+ENDFORM.                    " DISPLAY_DATA
+
+
+AT LINE-SELECTION.
+
+
+
+
+*  GET CURSOR FIELD V_FIELD VALUE V_VALUE.
+
+
+  SET PARAMETER ID 'AUN' FIELD sy-lisel+9(10).
+
+  CALL TRANSACTION 'VA03' AND SKIP FIRST SCREEN .
+
+
+
+
+
+*&---------------------------------------------------------------------*
+*&      Form  INTERACTION
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  VALIDCUSTOMER
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  VALIDCUSTOMER
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM validcustomer .
+  SELECT  SINGLE kunnr FROM kna1 INTO v_kunnr WHERE kunnr IN s_kunnr.
+
+
+  IF sy-subrc NE 0.
+
+    MESSAGE 'ENTER VALID CUSTOMER ' TYPE 'E'.
+
+  ENDIF.
+ENDFORM.                    " VALIDCUSTOMER
